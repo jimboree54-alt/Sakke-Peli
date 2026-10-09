@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sakke ja kaljanmetsästys</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101827;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;justify-content:center;min-height:100vh}
+main{width:min(100%,900px);padding:14px}h1{font-size:clamp(1.5rem,5vw,2.7rem);margin:4px 0;color:#ffd34f;text-shadow:3px 3px #7c2d12;text-align:center}
+.sub{text-align:center;color:#dbeafe;margin:0 0 10px}#hud{display:flex;justify-content:space-between;gap:8px;background:#1e293b;border:2px solid #475569;border-radius:12px;padding:10px 14px;font-weight:800;margin-bottom:8px}
+canvas{width:100%;height:auto;display:block;border:3px solid #64748b;border-radius:14px;background:#0f172a;touch-action:none}
+.controls{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px}.pad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,44px);gap:5px}.pad button,.action{border:0;border-radius:10px;background:#334155;color:white;font-size:1.2rem;font-weight:900;box-shadow:0 3px #0f172a;touch-action:manipulation}.pad button:active,.action:active{transform:translateY(2px);box-shadow:0 1px #0f172a}.pad .up{grid-column:2}.pad .left{grid-column:1;grid-row:2}.pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}.action{padding:13px 18px;background:#15803d;font-size:1rem}.help{color:#cbd5e1;font-size:.9rem;line-height:1.4;margin:10px 2px}.overlay{position:relative}.overlay button{cursor:pointer} 
+</style>
+</head>
+<body><main>
+<h1>🍺 Sakke ja kaljanmetsästys 🍺</h1>
+<p class="sub">Kerää saaliit, väistele laatikoita ja tee ennätys!</p>
+<div id="hud"><span>🍺 Saalis: <b id="score">0</b>/12</span><span>⏱️ <b id="time">45</b>s</span><span>🏆 Ennätys: <b id="best">0</b></span></div>
+<canvas id="game" width="800" height="500" aria-label="Peli"></canvas>
+<div class="controls"><div class="pad">
+<button class="up" data-dir="up">▲</button><button class="left" data-dir="left">◀</button><button class="down" data-dir="down">▼</button><button class="right" data-dir="right">▶</button>
+</div><button class="action" id="start">Aloita peli</button></div>
+<p class="help">Ohjaus: nuolinäppäimet tai WASD. Puhelimella käytä nuolinappeja. Kerää 12 tuoppia ennen ajan loppumista. Törmäys esteeseen pudottaa yhden pisteen — Sakke selviää kyllä!</p>
+</main>
+<script>
+(() => {
+const c=document.getElementById('game'),ctx=c.getContext('2d');
+const scoreEl=document.getElementById('score'),timeEl=document.getElementById('time'),bestEl=document.getElementById('best'),startBtn=document.getElementById('start');
+let player,beers,obstacles,score,time,running,last,keys={},message='Valmis kaljanmetsästykseen?',submessage='Paina “Aloita peli”',best=Number(localStorage.getItem('sakkeBest')||0),spawnTick=0;
+bestEl.textContent=best;
+const rand=(a,b)=>Math.random()*(b-a)+a;
+function reset(){player={x:400,y:250,r:19,speed:235,hit:0};beers=[];obstacles=[];score=0;time=45;spawnTick=0;for(let i=0;i<5;i++)spawnBeer();for(let i=0;i<6;i++)spawnObstacle();scoreEl.textContent=score;timeEl.textContent=time;}
+function spawnBeer(){let p;do{p={x:35+Math.random()*730,y:45+Math.random()*410,r:13};}while(player&&Math.hypot(p.x-player.x,p.y-player.y)<80);beers.push(p);}
+function spawnObstacle(){obstacles.push({x:rand(35,750),y:rand(55,455),w:rand(28,48),h:rand(25,42),tone:Math.random()>.5?'#9a5b2e':'#64748b'});}
+function drawBeer(b){ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='#fbbf24';ctx.strokeStyle='#fff0bd';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-10,-12,20,25,4);ctx.fill();ctx.stroke();ctx.fillStyle='#fff8e7';ctx.beginPath();ctx.arc(-5,-13,6,0,Math.PI*2);ctx.arc(1,-16,7,0,Math.PI*2);ctx.arc(7,-12,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-5,-4);ctx.lineTo(5,-4);ctx.stroke();ctx.restore();}
+function drawSakke(){let p=player;ctx.save();ctx.translate(p.x,p.y);if(p.hit>0)ctx.globalAlpha=.5;
+ctx.fillStyle='#166534';ctx.beginPath();ctx.ellipse(0,12,18,20,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#f3b9a0';ctx.beginPath();ctx.arc(0,-12,15,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#eab308';ctx.beginPath();ctx.arc(-5,-14,2,0,Math.PI*2);ctx.arc(5,-14,2,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle='#7f1d1d';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,-8,7,.15,Math.PI-.15);ctx.stroke();
+ctx.fillStyle='#14532d';ctx.fillRect(-14,0,28,5);ctx.restore();}
+function background(){ctx.fillStyle='#172b25';ctx.fillRect(0,0,800,500);ctx.fillStyle='#244238';for(let x=0;x<800;x+=50){ctx.fillRect(x,0,2,500)}for(let y=0;y<500;y+=50){ctx.fillRect(0,y,800,2)}
+ctx.fillStyle='#334155';ctx.fillRect(0,0,800,24);ctx.fillRect(0,476,800,24);ctx.fillRect(0,0,24,500);ctx.fillRect(776,0,24,500);
+ctx.fillStyle='#fef3c7';ctx.font='14px system-ui';ctx.fillText('MARKKINATORI • YÖ',30,17);}
+function render(){background();obstacles.forEach(o=>{ctx.fillStyle=o.tone;ctx.fillRect(o.x,o.y,o.w,o.h);ctx.strokeStyle='#d6a36a';ctx.strokeRect(o.x,o.y,o.w,o.h);ctx.fillStyle='#ffffff30';ctx.fillRect(o.x+5,o.y+5,o.w-10,4);});beers.forEach(drawBeer);if(player)drawSakke();
+if(!running){ctx.fillStyle='#020617b8';ctx.fillRect(60,150,680,190);ctx.textAlign='center';ctx.fillStyle='#fde68a';ctx.font='bold 32px system-ui';ctx.fillText(message,400,205);ctx.fillStyle='#fff';ctx.font='18px system-ui';ctx.fillText(submessage,400,245);ctx.font='15px system-ui';ctx.fillText('🍺 Kerää tuopit — älä jää jumiin laatikoihin! 🍺',400,280);ctx.textAlign='left';}}
+function end(win){running=false;message=win?'SAALIS KASASSA! 🍻':'Aika loppui!';submessage=win?'Sakke on kaljanmetsästyksen mestari!':'Sait '+score+' tuoppia. Uusi kierros?';if(score>best){best=score;localStorage.setItem('sakkeBest',best);bestEl.textContent=best;}render();}
+function update(dt){if(!running)return;time-=dt;if(time<=0){time=0;timeEl.textContent=0;end(false);return;}timeEl.textContent=Math.ceil(time);
+let dx=(keys.right||keys.ArrowRight||keys.d?1:0)-(keys.left||keys.ArrowLeft||keys.a?1:0),dy=(keys.down||keys.ArrowDown||keys.s?1:0)-(keys.up||keys.ArrowUp||keys.w?1:0);let l=Math.hypot(dx,dy)||1;player.x+=dx/l*player.speed*dt;player.y+=dy/l*player.speed*dt;player.x=Math.max(40,Math.min(760,player.x));player.y=Math.max(45,Math.min(455,player.y));player.hit=Math.max(0,player.hit-dt);
+for(let i=beers.length-1;i>=0;i--){let b=beers[i];if(Math.hypot(player.x-b.x,player.y-b.y)<player.r+b.r+2){beers.splice(i,1);score++;scoreEl.textContent=score;spawnBeer();if(score>=12){end(true);return;}}}
+for(let o of obstacles){if(player.x+player.r>o.x&&player.x-player.r<o.x+o.w&&player.y+player.r>o.y&&player.y-player.r<o.y+o.h&&player.hit<=0){score=Math.max(0,score-1);scoreEl.textContent=score;player.hit=.7;player.x+=(player.x<o.x+o.w/2?-24:24);player.y+=(player.y<o.y+o.h/2?-24:24);}}
+spawnTick+=dt;if(spawnTick>7&&obstacles.length<10){spawnObstacle();spawnTick=0;}}
+function loop(ts){let dt=Math.min(.04,(ts-last)/1000||0);last=ts;update(dt);render();requestAnimationFrame(loop);}
+document.addEventListener('keydown',e=>{let k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();if(e.key==='Enter'&&!running)startGame();});
+document.addEventListener('keyup',e=>{let k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false;});
+document.querySelectorAll('[data-dir]').forEach(btn=>{const dir=btn.dataset.dir;const key={up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'}[dir];const on=e=>{e.preventDefault();keys[key]=true};const off=e=>{e.preventDefault();keys[key]=false};btn.addEventListener('pointerdown',on);['pointerup','pointercancel','pointerleave'].forEach(ev=>btn.addEventListener(ev,off));});
+function startGame(){reset();running=true;message='';submessage='';startBtn.textContent='Aloita uudelleen';}
+startBtn.addEventListener('click',startGame);reset();running=false;render();requestAnimationFrame(t=>{last=t;loop(t);});
+})();
+</script></body></html>
